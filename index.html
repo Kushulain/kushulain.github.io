@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kushulain — Unity Developer / Tech Artist</title>
+  <meta name="description" content="Victor Beaupuy — Unity Developer & Tech Artist. Shaders, VFX, optimization, XR.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <!-- Unity "KaleiName" shader ported to three.js -->
+      <canvas id="hero-canvas"></canvas>
+      <p class="hero-hint">Click the kaleidoscope, then move your mouse</p>
+      <div id="texture-buttons" class="texture-buttons"></div>
+      <h1 class="tagline">Unity Developer / Tech Artist</h1>
+    </section>
+
+    <!-- Unity "KaleiName_Linear" shader, rendered in a shared RTT -->
+    <canvas class="rtt-divider"></canvas>
+
+    <section class="reel">
+      <h2 class="section-title">Demo Reel</h2>
+      <div class="video-wrap">
+        <!-- Placeholder: old reel, swap for the new one when ready -->
+        <iframe
+          src="https://www.youtube-nocookie.com/embed/VY27zF3SISc"
+          title="Demo reel"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen></iframe>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a href="https://github.com/Kushulain">GitHub</a>
+    <a href="mailto:victor.beaupuy@gmail.com">victor.beaupuy@gmail.com</a>
+    <span>Discord: victor1943</span>
+  </footer>
+
+  <script src="js/nav.js"></script>
+  <script src="js/shaders/rtt-divider.js"></script>
+  <script type="module" src="js/shaders/kaleidoscope.js"></script>
+</body>
+</html>

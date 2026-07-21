@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <defs>
+    <radialGradient id="g1" cx="30%" cy="40%" r="80%">
+      <stop offset="0%" stop-color="#ff8c1a"/>
+      <stop offset="55%" stop-color="#682860"/>
+      <stop offset="100%" stop-color="#0a0a0c"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#g1)"/>
+  <text x="400" y="235" text-anchor="middle" font-family="Montserrat, sans-serif" font-size="42" font-weight="800" fill="#edeaf0" letter-spacing="6">HANAHANA</text>
+  <text x="400" y="275" text-anchor="middle" font-family="Montserrat, sans-serif" font-size="16" fill="#edeaf0" opacity="0.7" letter-spacing="3">PLACEHOLDER</text>
+</svg>

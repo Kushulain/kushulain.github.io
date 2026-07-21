@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <defs>
+    <radialGradient id="g3" cx="50%" cy="20%" r="90%">
+      <stop offset="0%" stop-color="#9b4f8f"/>
+      <stop offset="60%" stop-color="#682860"/>
+      <stop offset="100%" stop-color="#0a0a0c"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#g3)"/>
+  <path d="M 300 120 q 100 -80 200 0 q -20 60 -100 60 q -80 0 -100 -60 Z" fill="#ff8c1a" opacity="0.35"/>
+  <path d="M 340 180 q 10 120 -20 220 M 400 180 q 0 130 10 230 M 460 180 q -10 120 20 220" fill="none" stroke="#ff8c1a" stroke-width="3" opacity="0.4"/>
+  <text x="400" y="255" text-anchor="middle" font-family="Montserrat, sans-serif" font-size="42" font-weight="800" fill="#edeaf0" letter-spacing="6">JELLYFISH</text>
+  <text x="400" y="295" text-anchor="middle" font-family="Montserrat, sans-serif" font-size="16" fill="#edeaf0" opacity="0.7" letter-spacing="3">PLACEHOLDER</text>
+</svg>
