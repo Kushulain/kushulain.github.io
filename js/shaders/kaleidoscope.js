@@ -177,25 +177,50 @@ async function init() {
   resize();
 
   /* ---------------- Interaction ----------------
-     Click toggles interactive mode: the fractal clock freezes (auto anim
-     stops where it is) and the smoothed mouse drives rotation and fold
-     offset. Click again to resume the auto animation seamlessly. */
+     Interactive mode: the fractal clock freezes (auto anim stops where it
+     is) and the smoothed pointer drives rotation and fold offset.
+     Desktop: click toggles the mode, hovering drives the shader.
+     Touch: dragging enables the mode and drives the shader (the canvas has
+     touch-action: none, so it never scrolls the page); a plain tap toggles
+     the mode off. */
 
   let interactive = false;
   const mouseTarget = { x: 0, y: 0 };
   const mouseSmooth = { x: 0, y: 0 };
   let fracClock = 0;
   let lastT = 0;
+  let downPos = null;
+  let wasInteractive = false;
 
-  canvas.addEventListener("pointerdown", () => {
-    interactive = !interactive;
+  function setInteractive(value) {
+    interactive = value;
     canvas.classList.toggle("interactive", interactive);
-  });
+  }
 
-  canvas.addEventListener("pointermove", (e) => {
+  function updatePointer(e) {
     const rect = canvas.getBoundingClientRect();
     mouseTarget.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     mouseTarget.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+  }
+
+  canvas.addEventListener("pointerdown", (e) => {
+    downPos = { x: e.clientX, y: e.clientY };
+    wasInteractive = interactive;
+    if (!interactive) setInteractive(true);
+    // Keep receiving moves even if the finger slides off the canvas
+    canvas.setPointerCapture(e.pointerId);
+    updatePointer(e);
+  });
+
+  canvas.addEventListener("pointermove", updatePointer);
+
+  canvas.addEventListener("pointerup", (e) => {
+    if (!downPos) return;
+    const dragged = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) > 8;
+    // A plain tap/click on an already-interactive canvas turns the mode off;
+    // a drag always leaves it on
+    if (!dragged && wasInteractive) setInteractive(false);
+    downPos = null;
   });
 
   renderer.setAnimationLoop((t) => {

@@ -157,6 +157,8 @@ section { margin-bottom: 4.5rem; }
   height: min(80vw, 88vh);
   display: block;
   cursor: pointer;
+  /* Touch-drag on the canvas drives the shader instead of scrolling the page */
+  touch-action: none;
 }
 
 #hero-canvas.interactive { cursor: crosshair; }
