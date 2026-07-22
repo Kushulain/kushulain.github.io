@@ -39,6 +39,11 @@ const float ANIM_DURATION = 4.0;  // _AnimDuration
 const float FRACTAL_SPEED = 5.0;  // _FractalSpeed
 // _NoRepeat = 1 (hardcoded in the final check)
 
+
+// Matches the html background (--bg: #0A0A0C) so the divider blends into the page
+const vec3 BG_COLOR = vec3(10.0 / 255.0, 10.0 / 255.0, 12.0 / 255.0);
+
+
 // HLSL smoothstep accepts reversed edges; GLSL leaves that undefined, so make it explicit
 float sstep(float e0, float e1, float x) {
   float t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
@@ -114,6 +119,8 @@ void main() {
   // _NoRepeat
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
     col = vec3(0.0);
+
+	col = max(BG_COLOR, col);
 
   gl_FragColor = vec4(col, 1.0);
 }
