@@ -120,7 +120,7 @@ void main() {
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
     col = vec3(0.0);
 
-	col = max(BG_COLOR, col);
+  col.rgb = max(BG_COLOR, col.rgb);
 
   gl_FragColor = vec4(col, 1.0);
 }
