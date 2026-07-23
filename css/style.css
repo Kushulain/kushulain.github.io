@@ -363,6 +363,44 @@ section { margin-bottom: 4.5rem; }
   font-size: 1.05rem;
 }
 
+.cv-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.8rem 2rem;
+  margin-top: 1.4rem;
+}
+
+.big-link {
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-shadow: var(--glow-orange);
+  transition: text-shadow 0.25s ease, letter-spacing 0.25s ease;
+}
+
+.big-link:hover {
+  color: var(--text);
+  letter-spacing: 0.16em;
+  text-shadow: var(--glow-violet);
+}
+
+.cv-download {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+
+.cv-download:hover {
+  color: var(--orange);
+  text-shadow: var(--glow-soft);
+}
+
 .skill-groups {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
