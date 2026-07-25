@@ -1,6 +1,28 @@
 // Renders WORKS entries from WORKS_DATA: tag filters, media lightbox,
 // and RTT divider shaders between entries.
 (function () {
+  // Inject style for the breakdown link (keeps style.css clean)
+  const s = document.createElement("style");
+  s.textContent = `
+    .breakdown-link {
+      display: inline-block;
+      margin-top: 1rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--orange);
+      text-shadow: var(--glow-soft);
+      transition: text-shadow .22s, letter-spacing .22s;
+    }
+    .breakdown-link:hover {
+      color: var(--orange);
+      letter-spacing: 0.26em;
+      text-shadow: var(--glow-orange);
+    }
+  `;
+  document.head.appendChild(s);
+
   const listEl = document.getElementById("works-list");
   const filtersEl = document.getElementById("tag-filters");
 
@@ -62,6 +84,24 @@
       iframe.allowFullscreen = true;
       wrap.appendChild(iframe);
       lightboxContent.replaceChildren(wrap);
+    } else if (media.type === "video") {
+      const wrap = document.createElement("div");
+      wrap.className = "lightbox-video";
+      const vid = document.createElement("video");
+      vid.controls = true;
+      vid.autoplay = true;
+      vid.loop = true;
+      vid.style.cssText = "width:100%;height:100%;object-fit:contain;background:#000;";
+      if (media.poster) vid.poster = media.poster;
+      const src = document.createElement("source");
+      src.src = media.src;
+      src.type = "video/mp4";
+      vid.appendChild(src);
+      wrap.appendChild(vid);
+      lightboxContent.replaceChildren(wrap);
+      // Must call play() synchronously within the user-gesture context.
+      // setTimeout breaks Firefox (loses the gesture scope).
+      vid.play().catch(() => {});
     }
     lightbox.classList.add("open");
   }
@@ -83,20 +123,43 @@
   function mediaThumb(media) {
     const btn = document.createElement("button");
     btn.className = "media-thumb";
-    const img = document.createElement("img");
+
     if (media.type === "youtube") {
+      const img = document.createElement("img");
       img.src = `https://img.youtube.com/vi/${media.id}/hqdefault.jpg`;
       img.alt = "Video thumbnail";
+      img.loading = "lazy";
       const play = document.createElement("span");
       play.className = "play-icon";
       play.textContent = "\u25B6";
       btn.append(img, play);
+    } else if (media.type === "video") {
+      // Inline muted preview — autoplays on hover, fullscreen on click
+      const vid = document.createElement("video");
+      vid.muted = true;
+      vid.loop = true;
+      vid.playsInline = true;
+      vid.preload = "metadata";
+      if (media.poster) vid.poster = media.poster;
+      const source = document.createElement("source");
+      source.src = media.src;
+      source.type = "video/mp4";
+      vid.appendChild(source);
+      const play = document.createElement("span");
+      play.className = "play-icon";
+      play.textContent = "\u25B6";
+      btn.append(vid, play);
+      btn.addEventListener("mouseenter", () => vid.play().catch(() => {}));
+      btn.addEventListener("mouseleave", () => { vid.pause(); vid.currentTime = 0; });
     } else {
+      // image
+      const img = document.createElement("img");
       img.src = media.src;
       img.alt = media.alt || "";
+      img.loading = "lazy";
       btn.append(img);
     }
-    img.loading = "lazy";
+
     btn.addEventListener("click", () => openLightbox(media));
     return btn;
   }
@@ -126,6 +189,14 @@
     for (const media of work.media) grid.appendChild(mediaThumb(media));
 
     article.append(h2, tags, desc, grid);
+
+    if (work.breakdown) {
+      const link = document.createElement("a");
+      link.href = work.breakdown;
+      link.className = "breakdown-link";
+      link.textContent = "Read breakdown \u2192";
+      article.appendChild(link);
+    }
 
     if (work.related && work.related.length) {
       const rel = document.createElement("p");

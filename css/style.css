@@ -286,6 +286,9 @@ section { margin-bottom: 4.5rem; }
   opacity: 1;
 }
 
+/* Hide play overlay when the inline video preview is playing */
+.media-thumb:hover .play-icon { opacity: 0; transition: opacity 0.2s; }
+
 .media-thumb .play-icon {
   position: absolute;
   inset: 0;

@@ -5,8 +5,10 @@
 //   id: "url-anchor",                     // unique, used as #anchor
 //   title: "Title",
 //   description: "Short description.",
+//   breakdown: "path/to/article.html",    // optional — renders "Read breakdown →"
 //   media: [
 //     { type: "image", src: "assets/img/xxx.jpg", alt: "Alt text" },
+//     { type: "video", src: "assets/img/xxx.mp4", poster: "assets/img/xxx.jpg" },
 //     { type: "youtube", id: "VIDEO_ID" },
 //   ],
 //   tags: ["VFX", "Shader"],              // shown and filterable at the top
@@ -15,38 +17,17 @@
 const WORKS_DATA = [
   {
     id: "hanahana",
-    title: "Hanahana — Plasma / SSS / Ritual",
+    title: "Hanahana — Skin SSS",
     description:
-      "Placeholder description. Real-time plasma shader with subsurface scattering and ritual VFX. Includes hands render optimization and plasma sorting — full breakdowns coming soon.",
+      "Custom skin Subsurface Scattering via a screen-space shadow buffer hack and hexagonal PCF sampling. Unity 5 Built-in Pipeline, real-time, 2018.",
+    breakdown: "breakdown-hand-sss.html",
     media: [
-      { type: "image", src: "assets/img/placeholder-hanahana.svg", alt: "Hanahana plasma shader" },
-      { type: "youtube", id: "VY27zF3SISc" },
+      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss2.jpg", alt: "Hanahana — backlit hands with skin SSS" },
+      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg", alt: "Hanahana — SSS glow through fingers" },
+      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss3.jpg", alt: "Hanahana — shadow edge translucency" },
+      { type: "video", src: "assets/img/breakdowns/hand_sss/hand_sss.mp4", poster: "assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg" },
     ],
     tags: ["VFX", "Shader", "Optimization"],
-    related: [],
-  },
-  {
-    id: "patchworld",
-    title: "Patchworld — Orbs, Kaleidoscope & Mixed Reality",
-    description:
-      "Placeholder description. Orbs, kaleidoscope, block redesign, tag connections, in-game particle generator, agentic integration, mixed reality and shared anchors.",
-    media: [
-      { type: "image", src: "assets/img/placeholder-patchworld.svg", alt: "Patchworld visuals" },
-      { type: "youtube", id: "VY27zF3SISc" },
-    ],
-    tags: ["XR/MR", "Optimization", "Tooling"],
-    related: [],
-  },
-  {
-    id: "jellyfish",
-    title: "JellyFish — Tentacles & Audio-Reactive Color",
-    description:
-      "Placeholder description. Procedural tentacles driven by two bone chains interpolated in the shader, color spreading, and audio pitch reactive visuals.",
-    media: [
-      { type: "image", src: "assets/img/placeholder-jellyfish.svg", alt: "JellyFish tentacles" },
-      { type: "youtube", id: "VY27zF3SISc" },
-    ],
-    tags: ["VFX", "Audio-Reactive", "Shader"],
     related: [],
   },
 ];

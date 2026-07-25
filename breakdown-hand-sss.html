@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skin SSS — Screen-Space Shadow Hack · Kushulain</title>
+  <meta name="description" content="Technical breakdown: real-time Subsurface Scattering for skin in Unity Built-in Pipeline by hijacking the screen-space shadow buffer with a hexagonal sampling pattern.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    /* ── Breakdown-specific overrides ─────────────────────────────── */
+
+    .bd-back {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 3.5rem;
+      transition: color .22s, text-shadow .22s;
+    }
+    .bd-back:hover { color: var(--orange); text-shadow: var(--glow-orange); }
+
+    /* ── Article header ─────────────────────────────────────────────── */
+
+    .bd-header { margin-bottom: 3.5rem; }
+
+    .bd-eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--orange);
+      text-shadow: var(--glow-soft);
+      margin: 0 0 0.9rem;
+    }
+
+    .bd-title {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      letter-spacing: 0.06em;
+      line-height: 1.15;
+      text-transform: uppercase;
+      text-shadow: var(--glow-orange);
+      margin: 0 0 1.1rem;
+    }
+
+    .bd-subtitle {
+      color: var(--text-dim);
+      font-size: 1.05rem;
+      max-width: 64ch;
+      margin: 0 0 1.6rem;
+    }
+
+    .bd-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 1.2rem;
+    }
+    .bd-tags span {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--violet-light);
+    }
+
+    /* ── Section ─────────────────────────────────────────────────────── */
+
+    .bd-section { margin-bottom: 3.8rem; }
+
+    .bd-section h2 {
+      font-size: 1.05rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--orange);
+      text-shadow: var(--glow-soft);
+      margin: 0 0 1.1rem;
+    }
+
+    .bd-section p {
+      color: var(--text-dim);
+      max-width: 74ch;
+      margin: 0 0 1rem;
+    }
+
+    .bd-section p strong { color: var(--text); }
+
+    /* ── Pipeline diagram ─────────────────────────────────────────── */
+
+    .pipeline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem 0;
+      margin: 1.6rem 0;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+    }
+
+    .pipeline-box {
+      padding: 0.55rem 1.1rem;
+      background: var(--bg-soft);
+      border: 1px solid rgba(155,79,143,0.3);
+      text-align: center;
+      line-height: 1.35;
+    }
+    .pipeline-box .label {
+      display: block;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 0.15rem;
+    }
+    .pipeline-box .name { color: var(--text); }
+    .pipeline-box.highlight {
+      border-color: rgba(255,140,26,0.6);
+      box-shadow: 0 0 14px rgba(255,140,26,0.2);
+    }
+    .pipeline-box .name.accent { color: var(--orange); }
+
+    .pipeline-arrow {
+      padding: 0 0.7rem;
+      color: var(--violet-light);
+      font-size: 1.1rem;
+    }
+
+    /* ── Code blocks ──────────────────────────────────────────────── */
+
+    .code-wrap {
+      position: relative;
+      margin: 1.4rem 0;
+    }
+
+    .code-label {
+      display: inline-block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--bg-soft);
+      border: 1px solid rgba(155,79,143,0.25);
+      border-bottom: none;
+      padding: 0.25rem 0.7rem;
+    }
+
+    pre {
+      margin: 0;
+      padding: 1.4rem 1.6rem;
+      background: var(--bg-soft);
+      border: 1px solid rgba(155,79,143,0.25);
+      overflow-x: auto;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: #c9c3d4;
+    }
+
+    /* Syntax highlighting classes */
+    .kw  { color: #c084fc; }   /* keywords: float, half, return … */
+    .fn  { color: #fb923c; }   /* function calls */
+    .cm  { color: #6b6480; font-style: italic; } /* comments */
+    .num { color: #34d399; }   /* numbers */
+    .str { color: #fbbf24; }   /* strings / macros */
+    .tp  { color: #7dd3fc; }   /* types */
+
+    /* ── Tap cost table ───────────────────────────────────────────── */
+
+    .tap-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 1.4rem 0;
+    }
+
+    .tap-table th {
+      text-align: left;
+      padding: 0.5rem 1rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      border-bottom: 1px solid rgba(155,79,143,0.3);
+    }
+
+    .tap-table td {
+      padding: 0.55rem 1rem;
+      color: var(--text-dim);
+      border-bottom: 1px solid rgba(155,79,143,0.12);
+    }
+
+    .tap-table tr.highlight td { color: var(--text); }
+    .tap-table tr.highlight td:last-child { color: var(--orange); }
+
+    .tap-table .mono { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; }
+
+    /* ── Callout box ──────────────────────────────────────────────── */
+
+    .callout {
+      border-left: 2px solid var(--orange);
+      padding: 0.9rem 1.2rem;
+      margin: 1.6rem 0;
+      background: rgba(255,140,26,0.05);
+    }
+    .callout p { margin: 0; color: var(--text-dim); }
+    .callout p strong { color: var(--orange); }
+
+    .callout.violet { border-color: var(--violet-light); background: rgba(155,79,143,0.05); }
+    .callout.violet p strong { color: var(--violet-light); }
+
+    /* ── Gallery ──────────────────────────────────────────────────── */
+
+    .bd-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.8rem;
+      margin: 1.4rem 0;
+    }
+
+    .bd-gallery-item {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      background: var(--bg-soft);
+      cursor: pointer;
+    }
+
+    .bd-gallery-item img,
+    .bd-gallery-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.88;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+      display: block;
+    }
+
+    .bd-gallery-item:hover img,
+    .bd-gallery-item:hover video { transform: scale(1.04); opacity: 1; }
+
+    /* ── Hexagonal SVG diagram ────────────────────────────────────── */
+
+    .hex-diagram {
+      display: flex;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+
+    /* ── Separator ────────────────────────────────────────────────── */
+
+    .bd-sep {
+      border: none;
+      border-top: 1px solid rgba(155,79,143,0.2);
+      margin: 3rem 0;
+    }
+
+    /* ── Lightbox (re-uses site .lightbox) ────────────────────────── */
+
+    @media (max-width: 600px) {
+      .pipeline { gap: 0.4rem 0; font-size: 0.72rem; }
+      .pipeline-arrow { padding: 0 0.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <main>
+    <a class="bd-back" href="works.html">← Works</a>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         HEADER
+    ═══════════════════════════════════════════════════════════════ -->
+    <header class="bd-header">
+      <p class="bd-eyebrow">Shader Breakdown · Hanahana (2018)</p>
+      <h1 class="bd-title">Fake Skin SSS<br>via a Shadow Buffer Hack</h1>
+      <p class="bd-subtitle">
+        Real-time Subsurface Scattering approximation for hands and skin in Unity's
+        Built-in Renderer — without any post-process stack, geometry shader,
+        or thickness texture.
+      </p>
+      <div class="bd-tags">
+        <span>Unity 5 · Built-in Pipeline</span>
+        <span>HLSL / CG</span>
+        <span>Shadow Map</span>
+        <span>Screen-Space</span>
+        <span>Skin Rendering</span>
+      </div>
+    </header>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         GALLERY
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="bd-gallery" id="bd-gallery">
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg">
+        <img src="assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg"
+             alt="Skin SSS — backlit hands render" loading="lazy">
+      </div>
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_sss/breakdown-hand_sss2.jpg">
+        <img src="assets/img/breakdowns/hand_sss/breakdown-hand_sss2.jpg"
+             alt="Skin SSS — detail view" loading="lazy">
+      </div>
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_sss/breakdown-hand_sss3.jpg">
+        <img src="assets/img/breakdowns/hand_sss/breakdown-hand_sss3.jpg"
+             alt="Skin SSS — shadow edge glow" loading="lazy">
+      </div>
+      <div class="bd-gallery-item" data-video="assets/img/breakdowns/hand_sss/hand_sss.mp4">
+        <video autoplay loop muted playsinline
+               poster="assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg"
+               aria-label="Skin SSS animation">
+          <source src="assets/img/breakdowns/hand_sss/hand_sss.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+
+    <hr class="bd-sep">
+
+    <!-- ══════════════════════════════════════════════════════════════
+         1. OVERVIEW
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>01 — Overview</h2>
+      <p>
+        <strong>Subsurface Scattering</strong> (SSS) is the optical phenomenon that makes
+        skin translucent: hold your hand up to a strong light source and you'll see red-orange
+        glow through the fingers. It's one of the defining qualities that separates a convincing
+        skin render from a painted plastic surface.
+      </p>
+      <p>
+        Hanahana (2018) was a performance piece rendered in <strong>Unity 5, Built-in Pipeline</strong>.
+        No HDRP, no post-process stack. The project featured hundreds of animated hands filling
+        the frame — making a traditional SSS approach (geometry pre-pass, thickness textures,
+        multi-layer diffuse profiles) completely impractical.
+      </p>
+      <p>
+        The technique described here is a <strong>deliberate hack</strong>: it repurposes
+        an existing rendering buffer — the screen-space shadow collection pass — to smuggle
+        a SSS proxy value all the way through to the material shader.
+        No extra passes, no extra render targets.
+      </p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         2. THE PIPELINE
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>02 — The Pipeline</h2>
+      <p>
+        Unity's shadow pipeline works in three stages. We intercept the second one.
+      </p>
+
+      <div class="pipeline">
+        <div class="pipeline-box">
+          <span class="label">Stage 1</span>
+          <span class="name">Shadow Map<br><small style="color:var(--text-dim);font-size:0.75em">depth from light POV</small></span>
+        </div>
+        <span class="pipeline-arrow">→</span>
+        <div class="pipeline-box highlight">
+          <span class="label">Stage 2 · Our hack</span>
+          <span class="name accent">Screen-Space Shadow Buffer<br><small style="font-size:0.75em">R=G=A : hard shadow · <strong>B : SSS proxy</strong></small></span>
+        </div>
+        <span class="pipeline-arrow">→</span>
+        <div class="pipeline-box">
+          <span class="label">Stage 3</span>
+          <span class="name">Material Shader<br><small style="color:var(--text-dim);font-size:0.75em">reads shadow.z for SSS</small></span>
+        </div>
+      </div>
+
+      <p>
+        The screen-space shadow buffer is a full-screen RGBA render texture.
+        Normally all four channels contain the same shadow attenuation value (0 = fully
+        in shadow, 1 = fully lit). By writing a <strong>different value into the blue
+        channel</strong>, we get a free communication channel to any material that samples
+        this buffer — at zero additional rendering cost.
+      </p>
+
+      <div class="callout">
+        <p><strong>Key insight:</strong> this is a <em>per-pixel</em>, <em>full-screen</em>
+        operation. The cost is completely independent of scene complexity, mesh count,
+        or draw call count. It runs once, exactly like a post-process effect.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         3. PART 1: SHADOW COLLECTION PASS
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>03 — Part 1: Shadow Collection Pass</h2>
+      <p>
+        The shadow collection pass is implemented in
+        <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em;color:var(--orange)">Internal-ScreenSpaceShadowsCustom.shader</code>.
+        Drop it in your project's <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em;color:var(--orange)">Resources/</code> folder
+        and Unity automatically picks it up over the built-in version.
+      </p>
+      <p>
+        Inside <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">frag_pcfSoft</code>, after computing
+        the standard hard shadow (<code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">shadow</code>
+        via <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">PCF7×7</code>),
+        we compute a second value called <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">shadow2</code>
+        which will become the blue channel.
+      </p>
+
+      <h3 style="font-size:0.85rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text);margin:1.6rem 0 0.6rem">
+        The Core Idea
+      </h3>
+      <p>
+        Instead of sampling the shadow map at the fragment's world position, we sample it
+        at <strong>nearby world positions offset along the light direction</strong>.
+        This is the translucency simulation: a point that is in shadow might still be
+        "reachable" if you peek from a slightly different angle through thin geometry.
+      </p>
+      <p>
+        On top of that, the samples are spread in a <strong>disk in the camera's tangent
+        plane</strong> (spanned by the camera right and up vectors), which blurs the shadow
+        boundary spatially — mimicking the scattering radius under skin.
+      </p>
+
+      <h3 style="font-size:0.85rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text);margin:1.6rem 0 0.6rem">
+        Why a Hexagonal Pattern?
+      </h3>
+      <p>
+        The naive approach is a <strong>cross pattern</strong> (±X, ±Y), but that leaves
+        45° blind spots — visible on rounded geometry like fingers seen in diagonal.
+        A <strong>hexagonal pattern</strong> (6 points at 60° intervals) reduces
+        the maximum angular error from 45° to <strong>30°</strong>, which is the
+        optimal tradeoff for 6 samples on a disk.
+      </p>
+
+      <div class="hex-diagram">
+        <svg viewBox="-70 -70 140 140" width="160" height="160" aria-label="Hexagonal sampling pattern">
+          <!-- Disk -->
+          <circle cx="0" cy="0" r="55" fill="none" stroke="rgba(155,79,143,0.2)" stroke-width="1"/>
+          <!-- Center -->
+          <circle cx="0" cy="0" r="5" fill="var(--orange)" opacity="0.9"/>
+          <text x="10" y="-8" font-family="JetBrains Mono,monospace" font-size="8" fill="var(--orange)" opacity="0.9">center ×2</text>
+          <!-- 6 outer points -->
+          <circle cx="55"  cy="0"    r="4" fill="var(--violet-light)"/>
+          <circle cx="27.5" cy="47.6" r="4" fill="var(--violet-light)"/>
+          <circle cx="-27.5" cy="47.6" r="4" fill="var(--violet-light)"/>
+          <circle cx="-55" cy="0"    r="4" fill="var(--violet-light)"/>
+          <circle cx="-27.5" cy="-47.6" r="4" fill="var(--violet-light)"/>
+          <circle cx="27.5" cy="-47.6"  r="4" fill="var(--violet-light)"/>
+          <!-- Angle labels -->
+          <text x="58"  y="4"    font-family="JetBrains Mono,monospace" font-size="8" fill="var(--text-dim)">0°</text>
+          <text x="30"  y="60"   font-family="JetBrains Mono,monospace" font-size="8" fill="var(--text-dim)">60°</text>
+          <text x="-52" y="60"   font-family="JetBrains Mono,monospace" font-size="8" fill="var(--text-dim)">120°</text>
+          <text x="-70" y="4"    font-family="JetBrains Mono,monospace" font-size="8" fill="var(--text-dim)">180°</text>
+          <text x="-52" y="-52"  font-family="JetBrains Mono,monospace" font-size="8" fill="var(--text-dim)">240°</text>
+          <text x="18"  y="-52"  font-family="JetBrains Mono,monospace" font-size="8" fill="var(--text-dim)">300°</text>
+        </svg>
+      </div>
+
+      <div class="code-wrap">
+        <span class="code-label">Internal-ScreenSpaceShadowsCustom.shader · frag_pcfSoft</span>
+        <pre><code><span class="cm">// Camera axes in world space — these define our sampling disk plane</span>
+<span class="tp">float4</span> xeye = <span class="tp">float4</span>(<span class="fn">mul</span>((<span class="tp">float3x3</span>)unity_CameraToWorld, <span class="tp">float3</span>(<span class="num">1</span>,<span class="num">0</span>,<span class="num">0</span>)), <span class="num">0.</span>);
+<span class="tp">float4</span> yeye = <span class="tp">float4</span>(<span class="fn">mul</span>((<span class="tp">float3x3</span>)unity_CameraToWorld, <span class="tp">float3</span>(<span class="num">0</span>,<span class="num">1</span>,<span class="num">0</span>)), <span class="num">0.</span>);
+
+<span class="cm">// Offset along the light direction = peek through thin geometry (~1.5 cm)</span>
+lightDir.xyz *= -<span class="num">0.015</span>;
+
+<span class="tp">float</span> blurSize = <span class="num">0.05</span>;          <span class="cm">// disk radius in world units</span>
+<span class="tp">float</span> hBlur = blurSize * <span class="num">0.5</span>;   <span class="cm">// cos(60°)</span>
+<span class="tp">float</span> dBlur = blurSize * <span class="num">0.866</span>; <span class="cm">// sin(60°)</span>
+
+<span class="cm">// Isotropic hexagonal pattern: 6 samples at 60° intervals + weighted center</span>
+<span class="cm">// Avoids the 45° blind spots of a cross pattern (±X, ±Y)</span>
+<span class="tp">half</span> shadow2;
+shadow2  = <span class="fn">PCF3x3</span>(wpos + lightDir + xeye * blurSize);                     <span class="cm">// 0°</span>
+shadow2 += <span class="fn">PCF3x3</span>(wpos + lightDir + xeye * hBlur + yeye * dBlur);          <span class="cm">// 60°</span>
+shadow2 += <span class="fn">PCF3x3</span>(wpos + lightDir - xeye * hBlur + yeye * dBlur);          <span class="cm">// 120°</span>
+shadow2 += <span class="fn">PCF3x3</span>(wpos + lightDir - xeye * blurSize);                     <span class="cm">// 180°</span>
+shadow2 += <span class="fn">PCF3x3</span>(wpos + lightDir - xeye * hBlur - yeye * dBlur);          <span class="cm">// 240°</span>
+shadow2 += <span class="fn">PCF3x3</span>(wpos + lightDir + xeye * hBlur - yeye * dBlur);          <span class="cm">// 300°</span>
+shadow2 += <span class="fn">PCF3x3</span>(wpos + lightDir) * <span class="num">2.0</span>;                               <span class="cm">// center ×2</span>
+shadow2 /= <span class="num">8.0</span>;  <span class="cm">// normalize: 6 × 1.0 + 1 × 2.0 = 8</span>
+
+shadow2 = <span class="fn">pow</span>(shadow2, <span class="num">0.8</span>);
+shadow2 = <span class="fn">lerp</span>(shadow2, shadow, <span class="num">0.2</span>); <span class="cm">// blend a little hard shadow back in</span>
+shadow2 *= shadow2;                      <span class="cm">// square: deepen the effect non-linearly</span>
+
+<span class="cm">// R, G, A = standard shadow  ·  B = SSS proxy</span>
+<span class="kw">return</span> <span class="fn">fixed4</span>(shadow, shadow, shadow2, shadow);</code></pre>
+      </div>
+
+      <div class="callout violet">
+        <p>
+          <strong>Note:</strong> <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">PCF3x3</code>
+          above is shorthand for
+          <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">UnitySampleShadowmap_PCF3x3(GET_SHADOW_COORDINATES(...), bias)</code>.
+          The actual shader uses that full form with cascade weights.
+        </p>
+      </div>
+
+      <h3 style="font-size:0.85rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text);margin:1.6rem 0 0.6rem">
+        Performance Cost
+      </h3>
+      <p>
+        Unity's PCF functions use hardware bilinear shadow fetches.
+        Here's how our approach compares:
+      </p>
+
+      <table class="tap-table">
+        <thead>
+          <tr>
+            <th>Configuration</th>
+            <th>Calls</th>
+            <th>Hardware taps (approx.)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Unity default soft shadow</td>
+            <td class="mono">1× PCF7×7</td>
+            <td>~16</td>
+          </tr>
+          <tr>
+            <td>Our base shadow (unchanged)</td>
+            <td class="mono">1× PCF7×7</td>
+            <td>~16</td>
+          </tr>
+          <tr>
+            <td>Our SSS ring</td>
+            <td class="mono">7× PCF3×3</td>
+            <td>~28</td>
+          </tr>
+          <tr class="highlight">
+            <td><strong>Our total</strong></td>
+            <td class="mono"><strong>8 calls</strong></td>
+            <td><strong>~44 vs 16 vanilla</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        That is roughly <strong>2.75× more expensive</strong> than vanilla Unity soft shadows.
+        However, this pass runs <em>once per frame regardless of how many objects or draw calls
+        are in the scene</em> — so the absolute cost stays bounded and predictable.
+        For a project like Hanahana with hundreds of mesh instances, this is clearly the
+        better trade-off compared to per-material thickness textures.
+      </p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         4. PART 2: MATERIAL SHADER
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>04 — Part 2: The Material Shader</h2>
+      <p>
+        The material shader is a custom <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">StandardSpecular</code>
+        surface shader with a custom lighting function. It reads the screen-space shadow buffer
+        manually to extract both the regular shadow and our blue-channel SSS proxy.
+      </p>
+
+      <h3 style="font-size:0.85rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text);margin:1.6rem 0 0.6rem">
+        Reading the Blue Channel
+      </h3>
+      <p>
+        In the <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">surf()</code> function,
+        the screen-space shadow buffer is sampled manually using the pre-computed screen position.
+        The blue component (<code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">shadow.z</code>) is
+        stored in a global variable for the lighting function to consume.
+      </p>
+
+      <div class="code-wrap">
+        <span class="code-label">Material Shader · surf()</span>
+        <pre><code><span class="cm">// Screen-space shadow buffer — sampled manually via pre-computed screen UV</span>
+<span class="tp">fixed4</span> shadowSample = <span class="fn">UNITY_SAMPLE_SCREEN_SHADOW_F</span>(_ShadowMapTexture, i.screenPos);
+
+<span class="cm">// The blue channel carries our hexagonal-sampled SSS proxy</span>
+<span class="cm">//   0.0  →  fully occluded (or behind thick geometry)</span>
+<span class="cm">//   1.0  →  directly lit (and spatial neighbors too)</span>
+SSS = shadowSample.z;</code></pre>
+      </div>
+
+      <h3 style="font-size:0.85rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text);margin:1.6rem 0 0.6rem">
+        Angle-Based Modulation
+      </h3>
+      <p>
+        In the custom lighting function, the SSS value is scaled by an angle-based multiplier
+        that approximates two physical phenomena:
+      </p>
+      <ul style="color:var(--text-dim);max-width:74ch;padding-left:1.4em;">
+        <li style="margin-bottom:0.5rem">
+          <strong style="color:var(--text)">Backlit translucency:</strong> when the camera looks
+          toward the light source (fingers silhouetted against the sun), SSS is maximal.
+          Captured by <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">dot(lightDir, -viewDir)</code>.
+        </li>
+        <li>
+          <strong style="color:var(--text)">Bounce / ambient wrap:</strong> a secondary SSS
+          contribution that is present even when not backlit — simulating indirect scattering.
+        </li>
+      </ul>
+
+      <div class="code-wrap">
+        <span class="code-label">Material Shader · LightingStandardSpecularCustom()</span>
+        <pre><code><span class="cm">// N·L: positive = lit side, negative = shadow side</span>
+<span class="tp">half</span> dotLight = <span class="fn">dot</span>(gi.light.dir, worldNormal);
+<span class="tp">half</span> back     = <span class="fn">min</span>(<span class="num">0.0</span>, dotLight);  <span class="cm">// contribution from backlit hemisphere only</span>
+
+<span class="cm">// Camera-to-light axis: 1.0 = looking into the light (backlit silhouette)</span>
+<span class="tp">half</span> lookToSun = <span class="fn">dot</span>(gi.light.dir, -viewDir) * <span class="num">0.5</span> + <span class="num">0.5</span>;
+
+<span class="cm">// Blend between bounce and backlight strengths.</span>
+<span class="cm">// pow(lookToSun, 10.0) makes the backlight falloff very tight — only</span>
+<span class="cm">// activates strongly when the camera is nearly in the sun axis.</span>
+<span class="tp">float</span> multiplier = <span class="fn">lerp</span>(SSS_bounced, SSS_backLight, <span class="fn">pow</span>(lookToSun, <span class="num">10.0</span>));
+
+<span class="cm">// Color gradient: thin/occluded areas glow warm; thicker lit areas get near skin tone.</span>
+<span class="cm">// SSS * SSS makes the transition nonlinear (favors the warm far color).</span>
+<span class="tp">float3</span> sssColor = <span class="fn">lerp</span>(_SSS_far, _SSS, SSS * SSS).rgb;
+
+<span class="cm">// Final contribution — added directly on top of the standard BRDF result</span>
+<span class="tp">float</span> intensity = SSS * multiplier * <span class="fn">saturate</span>(isNail + <span class="num">1.0</span> + h + back);
+c.rgb += intensity * sssColor * _LightColor0.rgb;</code></pre>
+      </div>
+
+      <h3 style="font-size:0.85rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text);margin:1.6rem 0 0.6rem">
+        The Color Gradient
+      </h3>
+      <p>
+        Two HDR colors are exposed per hand size category (small / big hands are scaled
+        differently): <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">_SSS</code> (near, bright areas)
+        and <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">_SSS_far</code> (deep/occluded areas).
+        The interpolation key is <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">SSS * SSS</code>,
+        meaning dark-shadowed pixels get the warm, saturated far color — giving fingertips and
+        ear edges that characteristic orange-red glow seen in strong backlighting.
+      </p>
+
+      <h3 style="font-size:0.85rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text);margin:1.6rem 0 0.6rem">
+        Nail Masking
+      </h3>
+      <p>
+        A small but effective detail: nails have a high blue component in the albedo texture.
+        <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">isNail = smoothstep(0.3, 0.48, albedo.b)</code>
+        extracts a smooth nail mask at zero texture cost. Nails get a different (harder, more
+        specular-like) SSS response, blending into a half-albedo tint instead of the warm skin SSS.
+      </p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         5. HOW TO INTEGRATE
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>05 — Integration</h2>
+      <p>
+        The technique is <strong>easy to drop in</strong>, with three steps:
+      </p>
+      <ol style="color:var(--text-dim);max-width:74ch;padding-left:1.4em;line-height:1.9;">
+        <li>
+          Copy <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">Internal-ScreenSpaceShadowsCustom.shader</code>
+          into your <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">Resources/</code> folder.
+          Unity picks it up automatically over the built-in version.
+          <strong style="color:var(--text)">No configuration needed.</strong>
+        </li>
+        <li>
+          In your material shader, define
+          <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">#define UNITY_SAMPLE_SCREEN_SHADOW_F</code>
+          for stereo compatibility and sample <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">_ShadowMapTexture</code>
+          manually with a pre-computed screen position.
+          Read <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">shadow.z</code> as your SSS input.
+        </li>
+        <li>
+          Add <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">fullforwardshadows</code> to your
+          <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">#pragma surface</code> directive
+          so Unity always writes the shadow buffer for this object.
+        </li>
+      </ol>
+      <div class="callout">
+        <p>
+          <strong>Cost reminder:</strong> the shadow collection pass runs <em>once per frame</em>,
+          globally. Enabling this effect costs the same whether you have 1 or 10 000 skinned meshes
+          in the scene. In scenes with many instanced objects it's essentially free compared to
+          per-material solutions.
+        </p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         6. LIMITATIONS
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>06 — Limitations</h2>
+      <ul style="color:var(--text-dim);max-width:74ch;padding-left:1.4em;line-height:1.9;">
+        <li>
+          <strong style="color:var(--text)">Screen-space artifacts:</strong> the SSS value
+          is computed in screen space, so it can leak at geometry edges where the depth
+          discontinuity confuses the sampling pattern.
+          For hands filling the frame this is barely visible.
+        </li>
+        <li>
+          <strong style="color:var(--text)">No true thickness:</strong> the technique does not
+          model actual sub-surface path length. The bleed amount is spatially uniform, controlled
+          only by the fixed <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">blurSize</code>
+          and <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">lightDir</code> offset —
+          not by how thick the geometry actually is.
+        </li>
+        <li>
+          <strong style="color:var(--text)">Built-in Pipeline only:</strong>
+          HDRP and URP handle the shadow collection pass differently. The override shader
+          approach is specific to the Built-in renderer.
+        </li>
+        <li>
+          <strong style="color:var(--text)">Blue channel squatting:</strong> if any other
+          built-in system ever uses <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">shadow.z</code>
+          for something else, there will be conflicts. In practice, Unity leaves it as a
+          copy of the shadow value — so this is safe.
+        </li>
+      </ul>
+    </section>
+
+    <hr class="bd-sep">
+
+    <footer style="text-align:center;color:var(--text-dim);font-size:0.8rem;letter-spacing:0.08em;padding:1rem 0 2rem;">
+      <a href="works.html" style="margin:0 0.8rem;">← Works</a>
+      <a href="index.html" style="margin:0 0.8rem;">Home</a>
+      <a href="about.html" style="margin:0 0.8rem;">About</a>
+    </footer>
+  </main>
+
+  <!-- ── Lightbox ─────────────────────────────────────────────────── -->
+  <div class="lightbox" id="bd-lightbox" role="dialog" aria-modal="true">
+    <button class="lightbox-close" id="bd-lb-close" aria-label="Close">CLOSE</button>
+    <div class="lightbox-content" id="bd-lb-content"></div>
+  </div>
+
+  <script src="js/nav.js"></script>
+  <script>
+    // ── Gallery lightbox ───────────────────────────────────────────
+    const lightbox = document.getElementById("bd-lightbox");
+    const lbContent = document.getElementById("bd-lb-content");
+    const lbClose   = document.getElementById("bd-lb-close");
+
+    // Image items
+    document.querySelectorAll("#bd-gallery .bd-gallery-item[data-src]").forEach(item => {
+      item.style.cursor = "pointer";
+      item.addEventListener("click", () => {
+        const img = document.createElement("img");
+        img.src = item.dataset.src;
+        img.alt = item.querySelector("img").alt;
+        lbContent.replaceChildren(img);
+        lightbox.classList.add("open");
+      });
+    });
+
+    // Video items
+    document.querySelectorAll("#bd-gallery .bd-gallery-item[data-video]").forEach(item => {
+      item.style.cursor = "pointer";
+      item.addEventListener("click", () => {
+        const wrap = document.createElement("div");
+        wrap.className = "lightbox-video";
+        const vid = document.createElement("video");
+        vid.controls = true;
+        vid.loop = true;
+        vid.style.cssText = "width:100%;height:100%;object-fit:contain;background:#000;";
+        vid.poster = "assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg";
+        const src = document.createElement("source");
+        src.src = item.dataset.video;
+        src.type = "video/mp4";
+        vid.appendChild(src);
+        wrap.appendChild(vid);
+        lbContent.replaceChildren(wrap);
+        lightbox.classList.add("open");
+        // Synchronous play() — Firefox loses user-gesture scope in setTimeout
+        vid.play().catch(() => {});
+      });
+    });
+
+    function closeLb() {
+      lightbox.classList.remove("open");
+      lbContent.replaceChildren();
+    }
+
+    lbClose.addEventListener("click", closeLb);
+    lightbox.addEventListener("click", e => { if (e.target === lightbox) closeLb(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeLb(); });
+  </script>
+</body>
+</html>
