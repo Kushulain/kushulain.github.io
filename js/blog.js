@@ -28,7 +28,7 @@
 
   /* ---------------- Tag filters (multi-select, "All" by default) ---------------- */
 
-  const allTags = [...new Set(WORKS_DATA.flatMap((w) => w.tags))].sort();
+  const allTags = [...new Set(BLOG_DATA.flatMap((w) => w.tags))].sort();
   const activeTags = new Set();
 
   function makeFilterBtn(label, onClick) {
@@ -203,7 +203,7 @@
       rel.className = "work-related";
       rel.append("Related: ");
       work.related.forEach((id, i) => {
-        const target = WORKS_DATA.find((w) => w.id === id);
+        const target = BLOG_DATA.find((w) => w.id === id);
         if (!target) return;
         if (i > 0) rel.append(" · ");
         const a = document.createElement("a");
@@ -219,7 +219,7 @@
 
   function render() {
     syncFilterUI();
-    const visible = WORKS_DATA.filter(
+    const visible = BLOG_DATA.filter(
       (w) => activeTags.size === 0 || w.tags.some((t) => activeTags.has(t))
     );
 

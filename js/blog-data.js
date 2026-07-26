@@ -14,7 +14,7 @@
 //   tags: ["VFX", "Shader"],              // shown and filterable at the top
 //   related: ["other-entry-id"],          // optional links to other entries
 // }
-const WORKS_DATA = [
+const BLOG_DATA = [
   {
     id: "hanahana",
     title: "Hanahana: Skin SSS",
