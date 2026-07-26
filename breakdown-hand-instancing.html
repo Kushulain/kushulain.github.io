@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Massive Instancing & Burst Culling · Kushulain</title>
+  <meta name="description" content="Technical breakdown: Displaying tens of thousands of hands in VR at 90fps using Burst Compiler culling and Octahedron Impostors in Unity 2018.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    /* ── Breakdown-specific overrides ─────────────────────────────── */
+    .bd-back {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 3.5rem;
+      transition: color .22s, text-shadow .22s;
+    }
+    .bd-back:hover { color: var(--orange); text-shadow: var(--glow-orange); }
+
+    /* ── Article header ─────────────────────────────────────────────── */
+    .bd-header { margin-bottom: 3.5rem; }
+    .bd-eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--orange);
+      text-shadow: var(--glow-soft);
+      margin: 0 0 0.9rem;
+    }
+    .bd-title {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      letter-spacing: 0.06em;
+      line-height: 1.15;
+      text-transform: uppercase;
+      text-shadow: var(--glow-orange);
+      margin: 0 0 1.1rem;
+    }
+    .bd-subtitle {
+      color: var(--text-dim);
+      font-size: 1.05rem;
+      max-width: 64ch;
+      margin: 0 0 1.6rem;
+    }
+    .bd-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 1.2rem;
+    }
+    .bd-tags span {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--violet-light);
+    }
+
+    /* ── Section ─────────────────────────────────────────────────────── */
+    .bd-section { margin-bottom: 3.8rem; }
+    .bd-section h2 {
+      font-size: 1.05rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--orange);
+      text-shadow: var(--glow-soft);
+      margin: 0 0 1.1rem;
+    }
+    .bd-section p {
+      color: var(--text-dim);
+      max-width: 74ch;
+      margin: 0 0 1rem;
+    }
+    .bd-section p strong { color: var(--text); }
+
+    /* ── Pipeline diagram ─────────────────────────────────────────── */
+    .pipeline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem 0;
+      margin: 1.6rem 0;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+    }
+    .pipeline-box {
+      padding: 0.55rem 1.1rem;
+      background: var(--bg-soft);
+      border: 1px solid rgba(155,79,143,0.3);
+      text-align: center;
+      line-height: 1.35;
+    }
+    .pipeline-box .label {
+      display: block;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 0.15rem;
+    }
+    .pipeline-box .name { color: var(--text); }
+    .pipeline-box.highlight {
+      border-color: rgba(255,140,26,0.6);
+      box-shadow: 0 0 14px rgba(255,140,26,0.2);
+    }
+    .pipeline-box .name.accent { color: var(--orange); }
+    .pipeline-arrow {
+      padding: 0 0.7rem;
+      color: var(--violet-light);
+      font-size: 1.1rem;
+    }
+
+    /* ── Code blocks ──────────────────────────────────────────────── */
+    .code-wrap {
+      position: relative;
+      margin: 1.4rem 0;
+    }
+    .code-label {
+      display: inline-block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--bg-soft);
+      border: 1px solid rgba(155,79,143,0.25);
+      border-bottom: none;
+      padding: 0.25rem 0.7rem;
+    }
+    pre {
+      margin: 0;
+      padding: 1.4rem 1.6rem;
+      background: var(--bg-soft);
+      border: 1px solid rgba(155,79,143,0.25);
+      overflow-x: auto;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: #c9c3d4;
+    }
+    .kw  { color: #c084fc; }   /* keywords */
+    .fn  { color: #fb923c; }   /* functions */
+    .cm  { color: #6b6480; font-style: italic; } /* comments */
+    .num { color: #34d399; }   /* numbers */
+    .str { color: #fbbf24; }   /* strings */
+    .tp  { color: #7dd3fc; }   /* types */
+
+    /* ── Callout box ──────────────────────────────────────────────── */
+    .callout {
+      border-left: 2px solid var(--orange);
+      padding: 0.9rem 1.2rem;
+      margin: 1.6rem 0;
+      background: rgba(255,140,26,0.05);
+    }
+    .callout p { margin: 0; color: var(--text-dim); }
+    .callout p strong { color: var(--orange); }
+    .callout.violet { border-color: var(--violet-light); background: rgba(155,79,143,0.05); }
+    .callout.violet p strong { color: var(--violet-light); }
+
+    /* ── Gallery ──────────────────────────────────────────────────── */
+    .bd-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.8rem;
+      margin: 1.4rem 0;
+    }
+    .bd-gallery-item {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      background: var(--bg-soft);
+      cursor: pointer;
+    }
+    .bd-gallery-item img,
+    .bd-gallery-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.88;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+      display: block;
+    }
+    .bd-gallery-item:hover img,
+    .bd-gallery-item:hover video { transform: scale(1.04); opacity: 1; }
+
+    /* ── Separator ────────────────────────────────────────────────── */
+    .bd-sep {
+      border: none;
+      border-top: 1px solid rgba(155,79,143,0.2);
+      margin: 3rem 0;
+    }
+
+    @media (max-width: 600px) {
+      .pipeline { gap: 0.4rem 0; font-size: 0.72rem; }
+      .pipeline-arrow { padding: 0 0.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <main>
+    <a class="bd-back" href="works.html">← Works</a>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         HEADER
+    ═══════════════════════════════════════════════════════════════ -->
+    <header class="bd-header">
+      <p class="bd-eyebrow">Optimization Breakdown · Hanahana (2018)</p>
+      <h1 class="bd-title">Massive Instancing<br>& Burst Culling</h1>
+      <p class="bd-subtitle">
+        Displaying tens of thousands of hands in VR at 90fps by pairing a custom Burst Compiler culling job with 256-angle Octahedron Impostors.
+      </p>
+      <div class="bd-tags">
+        <span>Unity 2018</span>
+        <span>Burst Compiler</span>
+        <span>Job System</span>
+        <span>GPU Instancing</span>
+        <span>Amplify Impostors</span>
+      </div>
+    </header>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         GALLERY
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="bd-gallery" id="bd-gallery">
+      <div class="bd-gallery-item" data-video="assets/img/breakdowns/hand_opti/opti_hand_video.mp4">
+        <video autoplay loop muted playsinline
+               poster="assets/img/breakdowns/hand_opti/hand_with_impostors_compare.jpg"
+               aria-label="Hand Optimization animation">
+          <source src="assets/img/breakdowns/hand_opti/opti_hand_video.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_opti/hand_with_impostors_compare.jpg">
+        <img src="assets/img/breakdowns/hand_opti/hand_with_impostors_compare.jpg"
+             alt="Hands rendering with impostors" loading="lazy">
+      </div>
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_opti/hand_without_impostors_compare.jpg">
+        <img src="assets/img/breakdowns/hand_opti/hand_without_impostors_compare.jpg"
+             alt="Hands rendering without impostors" loading="lazy">
+      </div>
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_opti/hand_impostors_diffuse_tex.jpg">
+        <img src="assets/img/breakdowns/hand_opti/hand_impostors_diffuse_tex.jpg"
+             alt="Impostor Diffuse Texture" loading="lazy">
+      </div>
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_opti/hand_impostors_normal_tex.jpg">
+        <img src="assets/img/breakdowns/hand_opti/hand_impostors_normal_tex.jpg"
+             alt="Impostor Normal Texture" loading="lazy">
+      </div>
+    </div>
+
+    <hr class="bd-sep">
+
+    <!-- ══════════════════════════════════════════════════════════════
+         1. THE PROBLEM
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>01 — The Problem: Too Many Hands</h2>
+      <p>
+        Hanahana is an immersive VR experience where players can spawn intricate, sprawling structures made entirely of hands.
+        As the structures grow, the screen quickly fills with thousands, and eventually tens of thousands, of hand meshes.
+      </p>
+      <p>
+        In VR, performance is brutal. You have around 11 milliseconds to render a frame for both eyes (90 fps).
+        When pushing thousands of individual GameObjects, the CPU overhead of Unity's built-in frustum culling and
+        render loop becomes the primary bottleneck. 
+      </p>
+      <p>
+        I vividly remember profiling the game early on: just the built-in culling operation alone was taking <strong>1.2 milliseconds</strong>.
+        When you add the VR cameras (one for each eye) and a water reflection probe (effectively tripling the camera count),
+        we were bleeding precious milliseconds before even sending a single triangle to the GPU. We needed a radical optimization.
+      </p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         2. BURST CULLING
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>02 — Burst Culling to the Rescue</h2>
+      <p>
+        The solution was to completely bypass Unity's <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em;color:var(--orange)">Renderer</code> components.
+        Instead of letting Unity manage visibility, we store a massive array of hand matrices and their bounding boxes in memory.
+        We then offload the frustum visibility checks to a custom <strong>Burst Compiler Job</strong>.
+      </p>
+      
+      <div class="code-wrap">
+        <span class="code-label">InstancedLODDrawer.cs · Culling Setup</span>
+        <pre><code><span class="cm">// The Burst job processes thousands of bounds against camera frustum planes in parallel</span>
+_LODJobProcessor.ProcessLOD(
+    cam.transform.position, cam.transform.forward, dirLight, 
+    allHands.Count, shadowPlaneCastRadius, InstancedLODDrawer.refFOV, ...
+);
+
+<span class="cm">// It feeds the visible instance IDs directly into our ComputeBuffers</span>
+<span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; LODDrawers.Count; i++)
+{
+    LODDrawers[i].SendIDToDraw(
+        <span class="kw">ref</span> _LODJobProcessor.lodResults, 
+        _LODJobProcessor.lodsStartID[i], 
+        _LODJobProcessor.lodsCounts[i]
+    );
+}</code></pre>
+      </div>
+
+      <p>
+        This was back in 2018, when Burst and the C# Job System were still quite new.
+        By moving the logic to Burst, the culling cost dropped from a heavy 1.2ms to an astonishing <strong>0.1ms per camera</strong>. 
+        This change alone gave us the CPU headroom we desperately needed to maintain stable VR framerates, even when the world
+        was packed with geometry. The results of the job are pushed into a <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">ComputeBuffer</code> and rendered in a single draw call via 
+        <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em">Graphics.DrawMeshInstancedIndirect</code>.
+      </p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         3. IMPOSTORS
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>03 — Impostors: A Hand is Just a Quad</h2>
+      <p>
+        Even with zero CPU overhead, sending tens of thousands of complex 3D meshes to the GPU will eventually crush the vertex shader and memory bandwidth.
+        To solve this, we implemented an aggressive LOD (Level of Detail) system leveraging <strong>Impostors</strong>.
+      </p>
+      <p>
+        Using the <a href="https://assetstore.unity.com/packages/tools/utilities/amplify-impostors-119877" target="_blank" style="color:var(--orange);text-decoration:none;">Amplify Impostors</a> plugin, we pre-rendered 256 different points of view of the hand mesh into an Octahedron layout.
+        The bake captures the diffuse color, normals, and — crucially — the <strong>depth in the alpha channel</strong>.
+      </p>
+
+      <div style="display:flex; gap:1.5rem; margin:2.5rem 0;">
+        <figure style="margin:0; flex:1;">
+          <img src="assets/img/breakdowns/hand_opti/hand_impostors_diffuse_tex.jpg" alt="Impostor Diffuse" style="width:100%; border:1px solid rgba(155,79,143,0.3);">
+          <figcaption style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-top:0.6rem;">Diffuse Atlas (256 POVs)</figcaption>
+        </figure>
+        <figure style="margin:0; flex:1;">
+          <img src="assets/img/breakdowns/hand_opti/hand_impostors_normal_tex.jpg" alt="Impostor Normal" style="width:100%; border:1px solid rgba(155,79,143,0.3);">
+          <figcaption style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-top:0.6rem;">Normal & Depth Atlas</figcaption>
+        </figure>
+      </div>
+      <p>
+        At a distance, a heavy 5000-polygon hand is seamlessly swapped out for a single Quad facing the camera. 
+        The shader samples the pre-rendered views based on the camera's current angle relative to the hand.
+        Because we stored the depth map in the alpha channel, these flat quads can correctly intersect with the environment
+        and with other hands without popping or looking like paper cutouts. It even casts and receives shadows properly.
+      </p>
+      
+      <div style="display:flex; gap:1.5rem; margin:2.5rem 0;">
+        <figure style="margin:0; flex:1;">
+          <img src="assets/img/breakdowns/hand_opti/hand_without_impostors_compare.jpg" alt="Without Impostor" style="width:100%; border:1px solid rgba(155,79,143,0.3);">
+          <figcaption style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-top:0.6rem;">Real Mesh (5000+ polygons)</figcaption>
+        </figure>
+        <figure style="margin:0; flex:1;">
+          <img src="assets/img/breakdowns/hand_opti/hand_with_impostors_compare.jpg" alt="With Impostor" style="width:100%; border:1px solid rgba(155,79,143,0.3);">
+          <figcaption style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-top:0.6rem;">Impostor Quad (2 polygons)</figcaption>
+        </figure>
+      </div>
+
+      <div class="callout violet">
+        <p><strong>The Final Result:</strong> The cost of drawing a distant hand became essentially nothing (2 triangles). By pairing 0.1ms Burst Culling with Impostor Quads, we were able to display <strong>tens of thousands of hands</strong> on screen simultaneously without dropping below 90fps in VR.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         4. HINDSIGHT: COMPUTE SHADER CULLING
+    ═══════════════════════════════════════════════════════════════ -->
+    <section class="bd-section">
+      <h2>04 — Hindsight: Why not GPU Culling?</h2>
+      <p>
+        Today, the industry standard for this kind of massive instancing is <strong>GPU Culling via Compute Shaders</strong>. 
+        So why did we use the CPU (Burst) instead?
+      </p>
+      <ul style="color:var(--text-dim);max-width:74ch;padding-left:1.4em;line-height:1.9;">
+        <li>
+          <strong style="color:var(--text)">CPU vs GPU Bottleneck:</strong> In VR, the GPU is already under immense pressure rendering two high-resolution views at 90fps. Offloading the culling to Burst utilized idle CPU cores perfectly, leaving 100% of the GPU for pixels.
+        </li>
+        <li>
+          <strong style="color:var(--text)">Immediate Readback:</strong> If gameplay logic needs to know which hands are visible, reading that data back from the GPU to the CPU introduces stalls. Burst keeps the data on the CPU side, ready instantly.
+        </li>
+        <li>
+          <strong style="color:var(--text)">Engine Maturity:</strong> In 2018, doing native GPU culling in Unity's Built-in Pipeline was a complex ordeal involving low-level buffer management. The C# Job System allowed us to write highly performant C++ style code while staying in a familiar C# environment.
+        </li>
+      </ul>
+      <p>
+        That said, a Compute Shader would have enabled <strong>Hierarchical Z-Buffer (Hi-Z) occlusion culling</strong>. 
+        Burst is great for frustum culling, but it can't easily tell if a hand is hidden behind a wall. In a game like Hanahana where structures stack densely, 
+        GPU occlusion culling would have saved an enormous amount of pixel overdraw bandwidth.
+      </p>
+    </section>
+
+    <hr class="bd-sep">
+
+    <footer style="text-align:center;color:var(--text-dim);font-size:0.8rem;letter-spacing:0.08em;padding:1rem 0 2rem;">
+      <a href="works.html" style="margin:0 0.8rem;">← Works</a>
+      <a href="index.html" style="margin:0 0.8rem;">Home</a>
+      <a href="about.html" style="margin:0 0.8rem;">About</a>
+    </footer>
+  </main>
+
+  <!-- ── Lightbox ─────────────────────────────────────────────────── -->
+  <div class="lightbox" id="bd-lightbox" role="dialog" aria-modal="true">
+    <button class="lightbox-close" id="bd-lb-close" aria-label="Close">CLOSE</button>
+    <div class="lightbox-content" id="bd-lb-content"></div>
+  </div>
+
+  <script src="js/nav.js"></script>
+  <script>
+    // ── Gallery lightbox ───────────────────────────────────────────
+    const lightbox = document.getElementById("bd-lightbox");
+    const lbContent = document.getElementById("bd-lb-content");
+    const lbClose   = document.getElementById("bd-lb-close");
+
+    // Image items
+    document.querySelectorAll("#bd-gallery .bd-gallery-item[data-src]").forEach(item => {
+      item.style.cursor = "pointer";
+      item.addEventListener("click", () => {
+        const img = document.createElement("img");
+        img.src = item.dataset.src;
+        img.alt = item.querySelector("img").alt || "";
+        lbContent.replaceChildren(img);
+        lightbox.classList.add("open");
+      });
+    });
+
+    // Video items
+    document.querySelectorAll("#bd-gallery .bd-gallery-item[data-video]").forEach(item => {
+      item.style.cursor = "pointer";
+      item.addEventListener("click", () => {
+        const wrap = document.createElement("div");
+        wrap.className = "lightbox-video";
+        const vid = document.createElement("video");
+        vid.controls = true;
+        vid.loop = true;
+        vid.style.cssText = "width:100%;height:100%;object-fit:contain;background:#000;";
+        vid.poster = "assets/img/breakdowns/hand_opti/hand_with_impostors_compare.jpg";
+        const src = document.createElement("source");
+        src.src = item.dataset.video;
+        src.type = "video/mp4";
+        vid.appendChild(src);
+        wrap.appendChild(vid);
+        lbContent.replaceChildren(wrap);
+        lightbox.classList.add("open");
+        vid.play().catch(() => {});
+      });
+    });
+
+    function closeLb() {
+      lightbox.classList.remove("open");
+      lbContent.replaceChildren();
+    }
+
+    lbClose.addEventListener("click", closeLb);
+    lightbox.addEventListener("click", e => { if (e.target === lightbox) closeLb(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeLb(); });
+  </script>
+</body>
+</html>

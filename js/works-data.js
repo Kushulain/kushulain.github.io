@@ -5,7 +5,7 @@
 //   id: "url-anchor",                     // unique, used as #anchor
 //   title: "Title",
 //   description: "Short description.",
-//   breakdown: "path/to/article.html",    // optional — renders "Read breakdown →"
+//   breakdown: "path/to/article.html",    // optional - renders "Read breakdown ->"
 //   media: [
 //     { type: "image", src: "assets/img/xxx.jpg", alt: "Alt text" },
 //     { type: "video", src: "assets/img/xxx.mp4", poster: "assets/img/xxx.jpg" },
@@ -17,17 +17,31 @@
 const WORKS_DATA = [
   {
     id: "hanahana",
-    title: "Hanahana — Skin SSS",
+    title: "Hanahana: Skin SSS",
     description:
       "Custom skin Subsurface Scattering via a screen-space shadow buffer hack and hexagonal PCF sampling. Unity 5 Built-in Pipeline, real-time, 2018.",
     breakdown: "breakdown-hand-sss.html",
     media: [
-      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss2.jpg", alt: "Hanahana — backlit hands with skin SSS" },
-      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg", alt: "Hanahana — SSS glow through fingers" },
-      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss3.jpg", alt: "Hanahana — shadow edge translucency" },
+      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss2.jpg", alt: "Hanahana: backlit hands with skin SSS" },
+      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg", alt: "Hanahana: SSS glow through fingers" },
+      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss3.jpg", alt: "Hanahana: shadow edge translucency" },
       { type: "video", src: "assets/img/breakdowns/hand_sss/hand_sss.mp4", poster: "assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg" },
     ],
     tags: ["VFX", "Shader", "Optimization"],
-    related: [],
+    related: ["hanahana-instancing"],
+  },
+  {
+    id: "hanahana-instancing",
+    title: "Hanahana: Faster LOD System",
+    description:
+      "How I outran Unity's built-in LOD & culling systems using a custom Burst Compiler job, rendering tens of thousands of hands in VR at 90fps.",
+    breakdown: "breakdown-hand-instancing.html",
+    media: [
+      { type: "video", src: "assets/img/breakdowns/hand_opti/opti_hand_video.mp4", poster: "assets/img/breakdowns/hand_opti/hand_with_impostors_compare.jpg" },
+      { type: "image", src: "assets/img/breakdowns/hand_opti/hand_with_impostors_compare.jpg", alt: "Hanahana: Hands rendering with impostors" },
+      { type: "image", src: "assets/img/breakdowns/hand_opti/hand_impostors_diffuse_tex.jpg", alt: "Hanahana: Impostor Diffuse Texture" }
+    ],
+    tags: ["Optimization", "Burst", "GPU Instancing", "Impostors"],
+    related: ["hanahana"],
   },
 ];
