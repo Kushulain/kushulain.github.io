@@ -316,6 +316,15 @@
           <source src="assets/img/breakdowns/hand_sss/hand_sss.mp4" type="video/mp4">
         </video>
       </div>
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_sss/breakdown-shadow_normal.jpg">
+        <img src="assets/img/breakdowns/hand_sss/breakdown-shadow_normal.jpg" alt="Vanilla shadow (No Blur)" loading="lazy">
+      </div>
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_sss/breakdown-shadow_blur.jpg">
+        <img src="assets/img/breakdowns/hand_sss/breakdown-shadow_blur.jpg" alt="Hexagonal PCF Blur" loading="lazy">
+      </div>
+      <div class="bd-gallery-item" data-src="assets/img/breakdowns/hand_sss/translucency_nails.jpg">
+        <img src="assets/img/breakdowns/hand_sss/translucency_nails.jpg" alt="Nail Masking" loading="lazy">
+      </div>
     </div>
 
     <hr class="bd-sep">
@@ -497,6 +506,17 @@ shadow2 *= shadow2;                      <span class="cm">// square: deepen the 
         </p>
       </div>
 
+      <div style="display:flex; gap:1.5rem; margin:2.5rem 0;">
+        <figure style="margin:0; flex:1;">
+          <img src="assets/img/breakdowns/hand_sss/breakdown-shadow_normal.jpg" alt="Vanilla Shadow" style="width:100%; border:1px solid rgba(155,79,143,0.3);">
+          <figcaption style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-top:0.6rem;">Vanilla Shadow (No Blur)</figcaption>
+        </figure>
+        <figure style="margin:0; flex:1;">
+          <img src="assets/img/breakdowns/hand_sss/breakdown-shadow_blur.jpg" alt="Hexagonal PCF Blur" style="width:100%; border:1px solid rgba(155,79,143,0.3);">
+          <figcaption style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-top:0.6rem;">Hexagonal PCF Blur (Our Implementation)</figcaption>
+        </figure>
+      </div>
+
       <h3 style="font-size:0.85rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text);margin:1.6rem 0 0.6rem">
         Performance Cost
       </h3>
@@ -641,6 +661,11 @@ c.rgb += intensity * sssColor * _LightColor0.rgb;</code></pre>
         extracts a smooth nail mask at zero texture cost. Nails get a different (harder, more
         specular-like) SSS response, blending into a half-albedo tint instead of the warm skin SSS.
       </p>
+
+      <figure style="margin: 2.5rem 0;">
+        <img src="assets/img/breakdowns/hand_sss/translucency_nails.jpg" alt="Nail Masking Detail" style="width:100%; border:1px solid rgba(155,79,143,0.3);">
+        <figcaption style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-top:0.6rem;">The nail mask ensures nails do not inherit the deep red skin translucency.</figcaption>
+      </figure>
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════
