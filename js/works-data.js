@@ -26,8 +26,6 @@ const WORKS_DATA = [
       { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg", alt: "Hanahana: SSS glow through fingers" },
       { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-hand_sss3.jpg", alt: "Hanahana: shadow edge translucency" },
       { type: "video", src: "assets/img/breakdowns/hand_sss/hand_sss.mp4", poster: "assets/img/breakdowns/hand_sss/breakdown-hand_sss1.jpg" },
-      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-shadow_normal.jpg", alt: "Hanahana: Vanilla Shadow" },
-      { type: "image", src: "assets/img/breakdowns/hand_sss/breakdown-shadow_blur.jpg", alt: "Hanahana: Hexagonal PCF Blur" },
       { type: "image", src: "assets/img/breakdowns/hand_sss/translucency_nails.jpg", alt: "Hanahana: Nail Masking" },
     ],
     tags: ["VFX", "Shader", "Optimization"],
