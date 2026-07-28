@@ -1,4 +1,4 @@
-// Renders WORKS entries from WORKS_DATA: tag filters, media lightbox,
+// Renders BLOG entries from BLOG_DATA: tag filters, media lightbox with navigation,
 // and RTT divider shaders between entries.
 (function () {
   // Inject style for the breakdown link (keeps style.css clean)
@@ -60,67 +60,9 @@
     }
   }
 
-  /* ---------------- Lightbox ---------------- */
-
-  const lightbox = document.createElement("div");
-  lightbox.className = "lightbox";
-  lightbox.innerHTML = `<button class="lightbox-close" aria-label="Close">CLOSE</button><div class="lightbox-content"></div>`;
-  document.body.appendChild(lightbox);
-  const lightboxContent = lightbox.querySelector(".lightbox-content");
-
-  function openLightbox(media) {
-    if (media.type === "image") {
-      const img = document.createElement("img");
-      img.src = media.src;
-      img.alt = media.alt || "";
-      lightboxContent.replaceChildren(img);
-    } else if (media.type === "youtube") {
-      const wrap = document.createElement("div");
-      wrap.className = "lightbox-video";
-      const iframe = document.createElement("iframe");
-      iframe.src = `https://www.youtube-nocookie.com/embed/${media.id}?autoplay=1`;
-      iframe.title = "Video";
-      iframe.allow = "autoplay; encrypted-media; picture-in-picture";
-      iframe.allowFullscreen = true;
-      wrap.appendChild(iframe);
-      lightboxContent.replaceChildren(wrap);
-    } else if (media.type === "video") {
-      const wrap = document.createElement("div");
-      wrap.className = "lightbox-video";
-      const vid = document.createElement("video");
-      vid.controls = true;
-      vid.autoplay = true;
-      vid.loop = true;
-      vid.style.cssText = "width:100%;height:100%;object-fit:contain;background:#000;";
-      if (media.poster) vid.poster = media.poster;
-      const src = document.createElement("source");
-      src.src = media.src;
-      src.type = "video/mp4";
-      vid.appendChild(src);
-      wrap.appendChild(vid);
-      lightboxContent.replaceChildren(wrap);
-      // Must call play() synchronously within the user-gesture context.
-      // setTimeout breaks Firefox (loses the gesture scope).
-      vid.play().catch(() => {});
-    }
-    lightbox.classList.add("open");
-  }
-
-  function closeLightbox() {
-    lightbox.classList.remove("open");
-    lightboxContent.replaceChildren(); // stops any playing video
-  }
-
-  lightbox.addEventListener("click", (e) => {
-    if (e.target === lightbox || e.target.classList.contains("lightbox-close")) closeLightbox();
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeLightbox();
-  });
-
   /* ---------------- Entries ---------------- */
 
-  function mediaThumb(media) {
+  function mediaThumb(media, allMedia, index) {
     const btn = document.createElement("button");
     btn.className = "media-thumb";
 
@@ -134,7 +76,6 @@
       play.textContent = "\u25B6";
       btn.append(img, play);
     } else if (media.type === "video") {
-      // Inline muted preview — autoplays on hover, fullscreen on click
       const vid = document.createElement("video");
       vid.muted = true;
       vid.loop = true;
@@ -152,7 +93,6 @@
       btn.addEventListener("mouseenter", () => vid.play().catch(() => {}));
       btn.addEventListener("mouseleave", () => { vid.pause(); vid.currentTime = 0; });
     } else {
-      // image
       const img = document.createElement("img");
       img.src = media.src;
       img.alt = media.alt || "";
@@ -160,7 +100,7 @@
       btn.append(img);
     }
 
-    btn.addEventListener("click", () => openLightbox(media));
+    btn.addEventListener("click", () => window.Lightbox.open(allMedia, index));
     return btn;
   }
 
@@ -186,7 +126,7 @@
 
     const grid = document.createElement("div");
     grid.className = "media-grid";
-    for (const media of work.media) grid.appendChild(mediaThumb(media));
+    work.media.forEach((media, i) => grid.appendChild(mediaThumb(media, work.media, i)));
 
     article.append(h2, tags, desc, grid);
 
@@ -247,7 +187,6 @@
 
   render();
 
-  // Jump to the anchored entry once rendered (direct links like works.html#jellyfish)
   if (location.hash) {
     const target = document.querySelector(location.hash);
     if (target) target.scrollIntoView();

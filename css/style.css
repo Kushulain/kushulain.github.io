@@ -359,6 +359,29 @@ section { margin-bottom: 4.5rem; }
   text-shadow: var(--glow-orange);
 }
 
+.lightbox-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 2rem;
+  padding: 1rem;
+  text-shadow: var(--glow-orange);
+  transition: text-shadow 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+}
+
+.lightbox-arrow:hover {
+  text-shadow: var(--glow-violet);
+  transform: translateY(-50%) scale(1.2);
+}
+
+.lightbox-prev { left: 1rem; }
+.lightbox-next { right: 1rem; }
+
 /* ---------------- ABOUT ---------------- */
 
 .about-intro {
