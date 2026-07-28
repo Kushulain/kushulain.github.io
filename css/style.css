@@ -148,13 +148,15 @@ section { margin-bottom: 4.5rem; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.6rem;
+  gap: 1rem;
   text-align: center;
+  margin-top: -3.5rem;
+  margin-bottom: 2rem;
 }
 
 #hero-canvas {
-  width: min(80vw, 88vh);
-  height: min(80vw, 88vh);
+  width: min(56vw, 61vh);
+  height: min(56vw, 61vh);
   display: block;
   cursor: pointer;
   /* Touch-drag on the canvas drives the shader instead of scrolling the page */
