@@ -78,6 +78,7 @@
       { type: "image", src: "assets/img/experiences/jellyfish7.jpg", alt: "Jellyfish VR 7" },
     ],
     "hanahana": [
+      { type: "image", src: "assets/img/experiences/hanahana7.jpg", alt: "Hanahana 7" },
       { type: "video", src: "assets/img/experiences/hanahana_video.mp4", poster: "assets/img/experiences/hanahana1.jpg" },
       { type: "image", src: "assets/img/experiences/hanahana1.jpg", alt: "Hanahana 1" },
       { type: "image", src: "assets/img/experiences/hanahana2.jpg", alt: "Hanahana 2" },
